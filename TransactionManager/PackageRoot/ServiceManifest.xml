@@ -1,0 +1,34 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ServiceManifest xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" Name="TransactionManagerPkg" Version="1.0.0" xmlns="http://schemas.microsoft.com/2011/01/fabric">
+  <ServiceTypes>
+    <StatefulServiceType ServiceTypeName="TransactionManagerActorServiceType" HasPersistedState="true">
+      <Extensions>
+        <Extension Name="__GeneratedServiceType__" GeneratedId="63ff2b8a-02e5-4a1e-bd6c-16016e5bd591|Persisted">
+          <GeneratedNames xmlns="http://schemas.microsoft.com/2015/03/fabact-no-schema">
+            <DefaultService Name="TransactionManagerActorService" />
+            <ReplicatorEndpoint Name="TransactionManagerActorServiceReplicatorEndpoint" />
+            <ReplicatorConfigSection Name="TransactionManagerActorServiceReplicatorConfig" />
+            <ReplicatorSecurityConfigSection Name="TransactionManagerActorServiceReplicatorSecurityConfig" />
+            <StoreConfigSection Name="TransactionManagerActorServiceLocalStoreConfig" />
+            <ServiceEndpointV2 Name="TransactionManagerActorServiceEndpointV2" />
+          </GeneratedNames>
+        </Extension>
+      </Extensions>
+    </StatefulServiceType>
+  </ServiceTypes>
+  <CodePackage Name="Code" Version="1.0.0">
+    <EntryPoint>
+      <ExeHost>
+        <Program>TransactionManager.exe</Program>
+      </ExeHost>
+    </EntryPoint>
+  </CodePackage>
+  <ConfigPackage Name="Config" Version="1.0.0" />
+  <Resources>
+    <Endpoints>
+      <Endpoint Name="TransactionManagerActorServiceEndpointV2" />
+      <Endpoint Name="TransactionManagerActorServiceReplicatorEndpoint" />
+    </Endpoints>
+  </Resources>
+  <!-- The content will be generated during build -->
+</ServiceManifest>
