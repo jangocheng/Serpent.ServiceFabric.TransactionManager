@@ -1,6 +1,6 @@
-﻿namespace TransactionManager
+﻿namespace TransactionManager.Interfaces
 {
-    internal enum TransactionStatus
+    public enum TransactionStatus
     {
         Unknown = 0,
         Created = 10,
@@ -9,6 +9,6 @@
         Committed = 1001,
         RollbackStarted = 2000,
         RollbackDone = 2001,
-        RollbackFailed = 2002
+        RollbackFailed = 2001,
     }
 }

@@ -20,6 +20,14 @@ namespace TransactionManager.Interfaces
 
         Task<TransactionParticipantId> RegisterTransactionParticipantAsync(CancellationToken cancellationToken);
 
+        Task<TransactionStatus> GetTransactionStatusAsync(CancellationToken cancellationToken);
+
+        Task UnregisterTransactionParticipantAsync(TransactionParticipantId transactionParticipantId, CancellationToken cancellationToken);
+
+        Task ReportTransactionParticipantCommittedAsync(TransactionParticipantId transactionParticipantId, CancellationToken cancellationToken);
+
+        Task ReportTransactionParticipantRolledBackAsync(TransactionParticipantId transactionParticipantId, CancellationToken cancellationToken);
+
         Task RollbackTransactionAsync(CancellationToken cancellationToken);
 
         Task CommitTransactionAsync(CancellationToken cancellationToken);

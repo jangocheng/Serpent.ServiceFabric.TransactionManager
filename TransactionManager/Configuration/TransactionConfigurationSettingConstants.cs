@@ -6,6 +6,8 @@
 
         public const string TransactionRollbackNotificationInterval = "TransactionRollbackNotificationInterval";
 
+        public const string MaximumTransactionTimeToLive = "MaximumTransactionTimeToLive";
+
         public const string TransactionRollbackTimeout = "TransactionRollbackTimeout";
     }
 }

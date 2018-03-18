@@ -22,7 +22,10 @@ namespace TransactionManager
                 // For more information, see https://aka.ms/servicefabricactorsplatform
 
                 ActorRuntime.RegisterActorAsync<TransactionManager>(
-                   (context, actorType) => new ActorService(context, actorType)).GetAwaiter().GetResult();
+                   (context, actorType) =>
+                       {
+                           return new TransactionActorService(context, actorType, (service, id, deleteActor) => new TransactionManager(service, id, deleteActor));
+                       }).GetAwaiter().GetResult();
 
                 Thread.Sleep(Timeout.Infinite);
             }
