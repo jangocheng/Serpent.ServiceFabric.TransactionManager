@@ -42,6 +42,20 @@
             return new TransactionParticipants(this.transactionParticipants.Append(transactionParticipant).ToArray());
         }
 
+        public void Replace(TransactionParticipant transactionParticipant)
+        {
+            for (var i = 0; i < this.transactionParticipants.Length; i++)
+            {
+                var participant = this.transactionParticipants[i];
+                if (participant.TransactionParticipantId.Equals(transactionParticipant.TransactionParticipantId))
+                {
+                    // This is OK being called from an actor, since it's thread safe already
+                    this.transactionParticipants[i] = transactionParticipant;
+                    break;
+                }
+            }
+        }
+
         /// <summary>Determines whether a sequence contains a specified element by using the default equality comparer.</summary>
         /// <param name="transactionParticipantId">The transaction participant id to look for.</param>
         /// <returns>true if the transaction participants contains the specified transaction participant id; otherwise, false.</returns>

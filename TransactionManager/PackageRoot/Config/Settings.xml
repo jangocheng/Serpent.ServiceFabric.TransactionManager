@@ -9,8 +9,10 @@
   </Section>
   <Section Name="Transaction">
     <Parameter Name="DefaultTransactionTimeout" Value="00:00:30" />
-    <Parameter Name="TransactionRollbackNotificationInterval" Value="00:00:02" />
+    <Parameter Name="TransactionCommitTimeout" Value="00:00:30" />
+    <Parameter Name="TransactionCommitNotificationInterval" Value="00:00:02" />
     <Parameter Name="TransactionRollbackTimeout" Value="00:00:30" />
+    <Parameter Name="TransactionRollbackNotificationInterval" Value="00:00:02" />
     <Parameter Name="MaximumTransactionTimeToLive" Value="01:00:00" />
   </Section>
   <!-- The content will be generated during build -->

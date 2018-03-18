@@ -24,7 +24,7 @@
         /// </summary>
         /// <param name="actorService">The Microsoft.ServiceFabric.Actors.Runtime.ActorService that will host this actor instance.</param>
         /// <param name="actorId">The Microsoft.ServiceFabric.Actors.ActorId for this actor instance.</param>
-        /// <param name="deleteActor"></param>
+        /// <param name="deleteActor">The delete actor interface</param>
         public TransactionManager(ActorService actorService, ActorId actorId, IDeleteActor deleteActor)
             : base(actorService, actorId)
         {
@@ -52,7 +52,30 @@
 
         public async Task CommitTransactionAsync(CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            var status = await this.GetTransactionStateStatusAsync(cancellationToken);
+
+            var actorId = this.GetActorId();
+
+            if (status != TransactionStatus.Active)
+            {
+                var errorMessage = "Commit is only available when a transaction is in active state. Current state: " + status;
+                ActorEventSource.Current.ActorMessage(this, errorMessage);
+                throw new InvalidOperationException(errorMessage);
+            }
+
+            // I suppose loggin every successful transaction can generate quite a lot of data
+            ActorEventSource.Current.ActorMessage(this, "Transaction commit started for transaction: " + actorId);
+            try
+            {
+                await this.StartTransactionCommitTimeoutAsync();
+                await this.StartTransactionCommitNotificationAsync();
+                await this.SetTransactionStateStatusAsync(TransactionStatus.CommitStarted, cancellationToken);
+            }
+            catch (Exception exception)
+            {
+                ActorEventSource.Current.ActorMessage(this, "Initializing transaction commit failed for transaction: " + this.GetActorId() + ":" + exception.ToString());
+                throw;
+            }
         }
 
         public async Task<Interfaces.TransactionStatus> GetTransactionStatusAsync(CancellationToken cancellationToken)
@@ -77,17 +100,24 @@
                 case ReminderConstants.MaximumTransactionTimeToLive:
                     await this.HandleTransactionTimeToLiveExpiredAsync();
                     break;
+                case ReminderConstants.TransactionCommitNotification:
+                    await this.HandleTransactionCommitNotificationAsync();
+                    break;
+                case ReminderConstants.TransactionCommitTimeout:
+                    await this.HandleTransactionCommitTimeoutAsync();
+                    break;
             }
         }
 
-        /// <summary>
-        ///  Event handler for time to live expired.
-        ///  Signals to the garbage collector to delete the actor
-        /// </summary>
-        /// <returns></returns>
-        private Task HandleTransactionTimeToLiveExpiredAsync()
+        private Task HandleTransactionCommitTimeoutAsync()
         {
-            this.deleteActor.DeleteActor(this.GetActorId());
+            throw new NotImplementedException();
+        }
+
+        private Task HandleTransactionCommitNotificationAsync()
+        {
+            var events = this.GetEvent<ITransactionManagerEvents>();
+            events.CommitTransaction();
             return Task.CompletedTask;
         }
 
@@ -100,23 +130,51 @@
 
         public async Task ReportTransactionParticipantCommittedAsync(TransactionParticipantId transactionParticipantId, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            var participants = await this.GetTransactionParticipantsAsync(cancellationToken);
+            participants.Replace(new TransactionParticipant(transactionParticipantId, TransactionParticipantStatus.Committed));
+            await this.SetTransactionParticipantsAsync(participants, cancellationToken);
+
+            if (participants.All(p => p.TransactionParticipantStatus == TransactionParticipantStatus.Committed))
+            {
+                await this.SetTransactionStateStatusAsync(TransactionStatus.Committed, cancellationToken);
+                await this.StopTransactionCommitNotificationAsync();
+                await this.StopTransactionTimeoutReminderAsync();
+            }
         }
 
         public async Task ReportTransactionParticipantRolledBackAsync(TransactionParticipantId transactionParticipantId, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            var participants = await this.GetTransactionParticipantsAsync(cancellationToken);
+            participants.Replace(new TransactionParticipant(transactionParticipantId, TransactionParticipantStatus.Rolledback));
+            await this.SetTransactionParticipantsAsync(participants, cancellationToken);
+
+            if (participants.All(p => p.TransactionParticipantStatus == TransactionParticipantStatus.Committed))
+            {
+                await this.SetTransactionStateStatusAsync(TransactionStatus.RollbackDone, cancellationToken);
+                await this.StopTransactionRollbackNotificationAsync();
+                await this.StopTransactionTimeoutReminderAsync();
+            }
         }
 
         public async Task RollbackTransactionAsync(CancellationToken cancellationToken)
         {
-            ActorEventSource.Current.ActorMessage(this, "Transaction rollback started for transaction: " + this.GetActorId());
+            var status = await this.GetTransactionStateStatusAsync(cancellationToken);
+
+            var actorId = this.GetActorId();
+
+            if (status != TransactionStatus.Active)
+            {
+                var errorMessage = "Rollback is only available when a transaction is in active state. Current state: " + status;
+                ActorEventSource.Current.ActorMessage(this, errorMessage);
+                throw new InvalidOperationException(errorMessage);
+            }
+
+            ActorEventSource.Current.ActorMessage(this, "Transaction rollback started for transaction: " + actorId);
             try
             {
                 await this.StartTransactionRollbackTimeoutAsync();
                 await this.StartTransactionRollbackNotificationAsync();
-
-                throw new NotImplementedException();
+                await this.SetTransactionStateStatusAsync(TransactionStatus.RollbackStarted, cancellationToken);
             }
             catch (Exception exception)
             {
@@ -146,10 +204,10 @@
         }
 
         /// <summary>
-        /// Notifies all subscribers a rollback is requested
+        ///     Notifies all subscribers a rollback is requested
         /// </summary>
         /// <returns>
-        /// The <see cref="Task"/>.
+        ///     The <see cref="Task" />.
         /// </returns>
         private Task HandleTransactionRollbackNotificationAsync()
         {
@@ -162,7 +220,9 @@
         {
             var transactionId = new TransactionId(this.GetActorId());
 
-            ActorEventSource.Current.ActorMessage(this, "Transaction rollback timed out: " + transactionId + ". The transaction will persist for a period of time to allow the participant to come online and rollback");
+            ActorEventSource.Current.ActorMessage(
+                this,
+                "Transaction rollback timed out: " + transactionId + ". The transaction will persist for a period of time to allow the participant to come online and rollback");
 
             // The transaction rollback timed out.. Stop sending notifications. 
             await this.StopTransactionRollbackNotificationAsync();
@@ -172,10 +232,15 @@
 
             foreach (var participant in participants.Where(p => p.TransactionParticipantStatus != TransactionParticipantStatus.Rolledback))
             {
-                ActorEventSource.Current.ActorMessage(this, "Transaction rollback: " + transactionId + ". Participant id: " + participant.TransactionParticipantId + " never reported back rollback. Last status: " + participant.TransactionParticipantStatus);
+                ActorEventSource.Current.ActorMessage(
+                    this,
+                    "Transaction rollback: "
+                    + transactionId
+                    + ". Participant id: "
+                    + participant.TransactionParticipantId
+                    + " never reported back rollback. Last status: "
+                    + participant.TransactionParticipantStatus);
             }
-
-
         }
 
         private async Task HandleTransactionTimedOutAsync()
@@ -188,6 +253,22 @@
 
                 await this.RollbackTransactionAsync(CancellationToken.None);
             }
+            else
+            {
+                ActorEventSource.Current.ActorMessage(this, "HandleTransactionTimedOutAsync should never be called unless actor state is Active");
+                throw new InvalidOperationException("HandleTransactionTimedOutAsync should never be called unless actor state is Active");
+            }
+        }
+
+        /// <summary>
+        ///     Event handler for time to live expired.
+        ///     Signals to the garbage collector to delete the actor
+        /// </summary>
+        /// <returns></returns>
+        private Task HandleTransactionTimeToLiveExpiredAsync()
+        {
+            this.deleteActor.DeleteActor(this.GetActorId());
+            return Task.CompletedTask;
         }
 
         private async Task StartTransactionRollbackNotificationAsync()
@@ -210,7 +291,7 @@
 
         private async Task StartTransactionTimeoutReminderAsync(TimeSpan timeout)
         {
-            await this.RegisterReminderAsync(ReminderConstants.TransactionTimeout, null, timeout, TimeSpan.FromMilliseconds(-1));
+            await this.RegisterReminderAsync(ReminderConstants.TransactionTimeout, null, timeout, TimeSpan.FromSeconds(10));
         }
 
         private async Task StartTransactionTimeToLiveReminderAsync()
@@ -223,12 +304,34 @@
             var reminder = this.GetReminder(ReminderConstants.TransactionRollbackNotification);
             await this.UnregisterReminderAsync(reminder);
         }
-
+        private async Task StopTransactionCommitNotificationAsync()
+        {
+            var reminder = this.GetReminder(ReminderConstants.TransactionCommitNotification);
+            await this.UnregisterReminderAsync(reminder);
+        }
 
         private async Task StopTransactionTimeoutReminderAsync()
         {
             var reminder = this.GetReminder(ReminderConstants.TransactionTimeout);
             await this.UnregisterReminderAsync(reminder);
+        }
+
+        private async Task StartTransactionCommitNotificationAsync()
+        {
+            await this.RegisterReminderAsync(
+                ReminderConstants.TransactionCommitNotification,
+                null,
+                TimeSpan.Zero,
+                this.transactionSettings.TransactionCommitNotificationInterval);
+        }
+
+        private async Task StartTransactionCommitTimeoutAsync()
+        {
+            await this.RegisterReminderAsync(
+                ReminderConstants.TransactionCommitTimeout,
+                null,
+                this.transactionSettings.TransactionCommitTimeout,
+                TimeSpan.FromMilliseconds(-1));
         }
     }
 }

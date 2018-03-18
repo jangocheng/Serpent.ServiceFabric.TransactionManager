@@ -23,6 +23,11 @@
                 TransactionConfigurationSettingConstants.TransactionRollbackNotificationInterval,
                 TimeSpan.FromSeconds(2));
             this.MaximumTransactionTimeToLive = this.GetTimeSpanSettingOrDefault(TransactionConfigurationSettingConstants.MaximumTransactionTimeToLive, TimeSpan.FromHours(1));
+
+            this.TransactionCommitTimeout = this.GetTimeSpanSettingOrDefault(TransactionConfigurationSettingConstants.TransactionCommitTimeout, TimeSpan.FromSeconds(30));
+            this.TransactionCommitNotificationInterval = this.GetTimeSpanSettingOrDefault(
+                TransactionConfigurationSettingConstants.TransactionCommitNotificationInterval,
+                TimeSpan.FromSeconds(2));
         }
 
         public TimeSpan DefaultTransactionTimeout { get; }
@@ -32,6 +37,10 @@
         public TimeSpan TransactionRollbackNotificationInterval { get; }
 
         public TimeSpan TransactionRollbackTimeout { get; }
+
+        public TimeSpan TransactionCommitNotificationInterval { get; }
+
+        public TimeSpan TransactionCommitTimeout { get; }
 
         private TimeSpan GetTimeSpanSettingOrDefault(string settingName, TimeSpan defaultValue)
         {

@@ -22,6 +22,7 @@ namespace TransactionManager.Interfaces
 
         Task<TransactionStatus> GetTransactionStatusAsync(CancellationToken cancellationToken);
 
+        // Not sure if we need this method
         Task UnregisterTransactionParticipantAsync(TransactionParticipantId transactionParticipantId, CancellationToken cancellationToken);
 
         Task ReportTransactionParticipantCommittedAsync(TransactionParticipantId transactionParticipantId, CancellationToken cancellationToken);

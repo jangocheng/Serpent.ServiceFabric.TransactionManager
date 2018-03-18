@@ -67,8 +67,8 @@
                     return Interfaces.TransactionStatus.Created;
                 case TransactionStatus.Active:
                     return Interfaces.TransactionStatus.Active;
-                case TransactionStatus.Committing:
-                    return Interfaces.TransactionStatus.Committing;
+                case TransactionStatus.CommitStarted:
+                    return Interfaces.TransactionStatus.CommitStarted;
                 case TransactionStatus.Committed:
                     return Interfaces.TransactionStatus.Committed;
                 case TransactionStatus.RollbackStarted:
