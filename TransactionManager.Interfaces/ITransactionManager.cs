@@ -16,7 +16,7 @@ namespace TransactionManager.Interfaces
     /// </summary>
     public interface ITransactionManager : IActor, IActorEventPublisher<ITransactionManagerEvents>
     {
-        Task<TransactionId> BeginTransactionAsync(TransactionProperties transactionProperties, CancellationToken cancellationToken);
+        Task<NewTransactionResponse> BeginTransactionAsync(TransactionProperties transactionProperties, CancellationToken cancellationToken);
 
         Task<TransactionParticipantId> RegisterTransactionParticipantAsync(CancellationToken cancellationToken);
 

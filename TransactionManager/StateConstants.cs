@@ -7,5 +7,7 @@
         public const string TransactionStatus = "TransactionStatus";
 
         public const string TransactionParticipants = "TransactionParticipants";
+
+        public const string CommitTransactionKey = "CommitTransactionKey";
     }
 }
